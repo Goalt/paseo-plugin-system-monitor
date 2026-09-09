@@ -1,0 +1,3 @@
+node_modules/
+# lock не публикуем: инлайн-транскрипция 145КБ хешей через MCP ненадёжна (прецедент paseo-plugin-kanban)
+package-lock.json
