@@ -1,14 +1,6 @@
-import type { PluginContext } from "@getpaseo/plugin";
 import { readFile, rename, statfs, writeFile } from "node:fs/promises";
 import { homedir } from "node:os";
-import { historyRpc, snapshotRpc, DISK_PATH, type Bucket, type HistoryWindow } from "./contract";
-import { SystemMonitor } from "./monitor.client";
-
-// ВАЖНО: никакого async/await в этом файле — он компилируется и в клиентский бандл,
-// а компилятор 0.6.1 не понижает синтаксис для Hermes. Только промис-цепочки.
-
-// node:*-импорты в клиентском бандле стабятся в {} — так отличаем сервер от клиента.
-const IS_SERVER = typeof readFile === "function";
+import { DISK_PATH, type Bucket, type HistoryWindow } from "../shared/contract";
 
 const SAMPLE_MS = 5_000;
 const DISK_MS = 60_000;
@@ -221,7 +213,7 @@ function loadState(): Promise<void> {
   );
 }
 
-function startSampler() {
+export function startSampler() {
   countCores().then((cores) => {
     state.cores = cores;
   });
@@ -235,51 +227,35 @@ function startSampler() {
   });
 }
 
-function stopSampler(): Promise<void> {
+export function stopSampler(): Promise<void> {
   for (const timer of state.timers) clearInterval(timer);
   state.timers = [];
   return saveState();
 }
 
-export default function contribute(plugin: PluginContext) {
-  plugin.handle(snapshotRpc, () => {
-    return readUptime().then((uptimeSec) => ({
-      cpuPct: state.lastCpuPct,
-      cores: state.cores,
-      ramPct: state.lastRamPct,
-      ramUsedBytes: state.lastRamUsed,
-      ramTotalBytes: state.lastRamTotal,
-      diskPct: state.lastDiskPct,
-      diskUsedBytes: state.lastDiskUsed,
-      diskTotalBytes: state.lastDiskTotal,
-      uptimeSec,
-    }));
-  });
+export function handleSnapshot() {
+  return readUptime().then((uptimeSec) => ({
+    cpuPct: state.lastCpuPct,
+    cores: state.cores,
+    ramPct: state.lastRamPct,
+    ramUsedBytes: state.lastRamUsed,
+    ramTotalBytes: state.lastRamTotal,
+    diskPct: state.lastDiskPct,
+    diskUsedBytes: state.lastDiskUsed,
+    diskTotalBytes: state.lastDiskTotal,
+    uptimeSec,
+  }));
+}
 
-  plugin.handle(historyRpc, ({ window }) => {
-    const spec = SERIES.find((s) => s.window === window);
-    const buckets: Bucket[] = (spec ? state.series[window] : []).map((b) => ({
-      ts: b.ts,
-      cpuAvg: b.n > 0 ? b.cpuSum / b.n : 0,
-      cpuMax: b.cpuMax,
-      ramAvg: b.n > 0 ? b.ramSum / b.n : 0,
-      ramMax: b.ramMax,
-      disk: b.disk,
-    }));
-    return Promise.resolve({ stepMs: spec ? spec.stepMs : 0, buckets });
-  });
-
-  plugin.addSurface("main", SystemMonitor);
-  plugin.addSidebarItem({
-    id: "main",
-    title: "System monitor",
-    icon: "Activity",
-    surface: "main",
-  });
-
-  if (IS_SERVER) startSampler();
-
-  return () => {
-    if (IS_SERVER) return stopSampler();
-  };
+export function handleHistory({ window }: { window: HistoryWindow }) {
+  const spec = SERIES.find((s) => s.window === window);
+  const buckets: Bucket[] = (spec ? state.series[window] : []).map((b) => ({
+    ts: b.ts,
+    cpuAvg: b.n > 0 ? b.cpuSum / b.n : 0,
+    cpuMax: b.cpuMax,
+    ramAvg: b.n > 0 ? b.ramSum / b.n : 0,
+    ramMax: b.ramMax,
+    disk: b.disk,
+  }));
+  return Promise.resolve({ stepMs: spec ? spec.stepMs : 0, buckets });
 }

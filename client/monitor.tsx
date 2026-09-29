@@ -1,5 +1,5 @@
-import type { PluginSurfaceProps } from "@getpaseo/plugin";
-import { useRpc } from "@getpaseo/plugin";
+import type { PluginSurfaceProps } from "@getpaseo/plugin/client";
+import { useRpc } from "@getpaseo/plugin/client";
 import React, { useEffect, useMemo, useState } from "react";
 import { Pressable, ScrollView, Text, View } from "react-native";
 import {
@@ -10,7 +10,7 @@ import {
   type Bucket,
   type HistoryWindow,
   type Snapshot,
-} from "./contract";
+} from "../shared/contract";
 
 // ВАЖНО: никакого async/await — компилятор демона 0.6.1 не понижает синтаксис
 // для клиентского бандла, Hermes на iOS/Android его не съест. Только промис-цепочки.

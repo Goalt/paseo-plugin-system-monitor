@@ -1,4 +1,4 @@
-import { defineRpc } from "@getpaseo/plugin/server";
+import { defineRpc } from "@getpaseo/plugin";
 import { z } from "zod";
 
 // Решения ревью ТЗ (SPEC §10): порог подсветки и единственный наблюдаемый маунт.
